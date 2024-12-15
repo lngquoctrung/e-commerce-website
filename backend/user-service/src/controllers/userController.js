@@ -1,216 +1,162 @@
-const userService = require('../services/userService');
-const responseService = require('../services/responseService');
-const profileService = require('../services/profileService');
-const axios = require("axios");
+const userHelper = require('../helpers/userHelper');
+const profileHelper = require('../helpers/profileHelper');
+const responseHelper = require('../helpers/responseHelper');
 
-// Fetch all users
-const getAllUser = async (req, res) => {
+// Getting all users
+const getAllUsers = async (req, res) => {
     try {
-        const users = await userService.getAllUsers();
-        return res.status(200).json(responseService.success(
+        const users = await userHelper.getUsers();
+        return res.status(200).json(responseHelper.success(
+            200,
+            'Success fetching the list of users',
             users,
-            "Data fetched successfully",
         ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error fetching all users",
+    } catch(error) {
+        return res.status(500).json(responseHelper.error(
             500,
+            'Failed fetching the list of users',
             error.message,
         ));
     }
 }
 
-// Get user by email
-const getUser = async (req, res) => {
-    const id = req.params.id;
+const searchUser = async (req, res) => {
     try {
-        const user = await userService.getUser({ _id: id });
+        const email = req.query.email;
+        const user = await userHelper.getUser({ email: email }, '', '_id email password');
         if(!user)
-            return res.status(404).json(responseService.error(
-                "User not found",
-                404
+            return res.status(404).json(responseHelper.error(
+                404,
+                "User not found"
             ));
-        return res.status(200).json(responseService.success(
-            user,
-            "Data fetched successfully",
-        ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error fetching user",
-            500,
-            error.message,
-        ));
-    }
-}
-
-// Search user by filter
-const search = async (req, res) => {
-    const filter = req.query;
-    try {
-        const user = await userService.getUser(filter);
-        if(!user)
-            return res.status(404).json(responseService.error(
-                "User not found",
-                404
-            ));
-        return res.status(200).json(responseService.success(
-            {
-                _id: user._id,
-                email: user.email,
-                password: user.password,
-                resetPasswordToken: user.resetPasswordToken,
-                resetPasswordExpires: user.resetPasswordExpires,
-            },
+        return res.status(200).json(responseHelper.success(
+            200,
             "User found",
+            user,
         ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error searching user",
+    } catch(error) {
+        return res.status(500).json(responseHelper.error(
             500,
+            "Failed searching user's data",
             error.message,
         ));
     }
 }
 
-// Get profile of a user
-const getProfileUser = async (req, res) => {
-    const addressServiceApi = process.env.ADDRESS_SERVICE_API;
-    const user = req.user;
+// Creating a new user
+const createNewUser = async (req, res) => {
     try {
-        const userData = await userService.getUser({ _id: user.userId });
-        const profile = await profileService.getProfile({ _id: userData?.profile });
-        const response = await axios.get(addressServiceApi, {
-            headers: {
-                'Cookie': req.headers.cookie || '',
-            }
+        // Get user's data
+        const {first_name, last_name, email, password } = req.body;
+        // Create new user
+        const newUser = await userHelper.createUser({ 
+            email, 
+            password 
         });
-        return res.status(200).json(responseService.success(
-            {
-                ...profile,
-                addresses: response.data.data,
-            },
-            "User profile got successfully",
-            200
-        ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error getting profile of user",
-            500,
-            error.message,
-        ));
-    }
-}
-
-// Update profile of a user
-const updateProfileUser = async (req, res) => {
-    const fromData = req.body;
-    const user = req.user;
-    try {
-        const userData = await userService.getUser({ _id: user.userId });
-        const updatedProfile = await profileService.updateProfile(
-            { _id: userData?.profile },
-            fromData,
-        );
-        if (!updatedProfile)
-            return res.status(404).json(responseService.error(
-                "User not found",
-                404
-            ));
-        return res.status(200).json(responseService.success(
-            updatedProfile,
-            "User updated successfully",
-            200
-        ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error getting profile of user",
-            500,
-            error.message,
-        ));
-    }
-}
-
-// Create a new user
-const createUser = async (req, res) => {
-    const user = req.body;
-    try {
-        const newUser = await userService.createUser(user);
-        return res.status(201).json(responseService.success(
+        // Create profile for new user
+        await profileHelper.createProfile({ 
+            user: newUser._id,
+            email,
+            first_name,
+            last_name,
+        });
+        return res.status(201).json(responseHelper.success(
+            201,
+            "Created successfully",
             newUser,
-            "User created successfully",
-            201
         ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error creating user",
+    } catch(error) {
+        return res.status(500).json(responseHelper.error(
             500,
+            "Failed creating new user",
             error.message,
         ));
     }
 }
 
-// Update a new user
+// Getting user
+const getUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await userHelper.getUser({
+            _id: userId,
+        });
+        if(!user)
+            return res.status(404).json(responseHelper.error(
+                404,
+                "User not found"
+            ));
+        return res.status(200).json(responseHelper.success(
+            200,
+            "Get user data successfully",
+            user,
+        ));
+    } catch(error) {
+        return res.status(500).json(responseHelper.error(
+            500,
+            "Failed getting user's data",
+            error.message,
+        ));
+    }
+}
+
+// Updating a user
 const updateUser = async (req, res) => {
-    const id = req.params.id;
-    const updates = req.body;
     try {
-        const updatedUser = await userService.updateUser({ _id: id }, updates);
+        const userId = req.params.id;
+        const updatedUser = await userHelper.updateUser({
+            _id: userId,
+        }, req.body);
         if(!updatedUser)
-            return res.status(404).json(responseService.error(
-                "User not found",
-                404
+            return res.status(404).json(responseHelper.error(
+                404,
+                "User not found"
             ));
-        return res.status(200).json(responseService.success(
+        return res.status(200).json(responseHelper.success(
+            200,
+            "Update user data successfully",
             updatedUser,
-            "Data updated successfully",
         ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error updating user",
+    } catch(error) {
+        return res.status(500).json(responseHelper.error(
             500,
+            "Failed updating user's data",
             error.message,
         ));
     }
 }
 
-// Delete a user
+// Deleting a user
 const deleteUser = async (req, res) => {
-    const id = req.params.id;
     try {
-        const deletedUser = await userService.deleteUser({ _id: id });
+        const userId = req.params.id;
+        const deletedUser = await userHelper.deleteUser({
+            _id: userId,
+        });
         if(!deletedUser)
-            return res.status(404).json(responseService.error(
-                "User not found",
-                404
+            return res.status(404).json(responseHelper.error(
+                404,
+                "User not found"
             ));
-        return res.status(200).json(responseService.success(
+        return res.status(200).json(responseHelper.success(
+            200,
+            "Delete user data successfully",
             deletedUser,
-            "Data deleted successfully",
         ));
-    }
-    catch(error) {
-        return res.status(500).json(responseService.error(
-            "Error deleting user",
+    } catch(error) {
+        return res.status(500).json(responseHelper.error(
             500,
+            "Failed deleting user's data",
             error.message,
         ));
     }
 }
 
 module.exports = {
-    getAllUser,
+    getAllUsers,
+    searchUser,
     getUser,
-    search,
-    getProfileUser,
-    updateProfileUser,
-    createUser,
+    createNewUser,
     updateUser,
-    deleteUser
+    deleteUser,
 }

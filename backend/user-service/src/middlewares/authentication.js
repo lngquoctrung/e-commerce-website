@@ -1,22 +1,23 @@
-const axios = require('axios');
-const responseService = require('../services/responseService');
+const responseHelper = require('../helpers/responseHelper');
+const ApiHelper = require('../helpers/apiHelper');
 
 module.exports = async (req, res, next) => {
-    const authServiceApi = process.env.AUTH_SERVICE_API;
     try {
-        const response = await axios.get(`${authServiceApi}/check-auth`, {
-            headers: {
-                'Cookie': req.headers.cookie || ''
-            },
-            withCredentials: true,
-        });
-        req.user = response.data.data;
+        const authServiceApi = new ApiHelper(
+            process.env.MS_AUTH_SERVICE_URL,
+            10000,
+            {
+                Cookie: req.headers.cookie,
+            }
+        );
+        const response = await authServiceApi.getRequest('/check_auth');
+        req.payload = response.data;
         return next();
     } catch(error) {
-        return res.status(401).json(responseService.error(
-            "Authentication failed",
-            401,
-            error.message
+        return res.status(500).json(responseHelper.error(
+            500,
+            "Error authenticating credentials",
+            error.message,
         ));
     }
 }

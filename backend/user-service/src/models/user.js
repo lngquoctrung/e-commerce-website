@@ -1,62 +1,58 @@
 const mongoose = require('mongoose');
-const Profile = require('./profile');
+const moment = require('moment-timezone');
 
 const userSchema = new mongoose.Schema({
-    first_name: {
-        type: String,
-        required: true,
-    },
-    last_name: {
-        type: String,
-        required: true,
-    },
     email: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    username: {
         type: String,
         required: true,
         unique: true,
     },
     password: {
         type: String,
-        require: true,
+        required: true,
     },
     role: {
         type: String,
-        default: 'user',
+        default: 'user'
     },
     refreshToken: {
         type: String,
         default: ''
     },
-    profile: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Profile'
+    createdAt: {
+        type: Date,
+        default: Date.now,
     },
-    resetPasswordToken: {
+    updatedAt: {
+        type: Date,
+        default: Date.now,
+    },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+    passwordResetToken: {
         type: String,
         default: ''
     },
-    resetPasswordExpires: {
+    passwordResetExpires: {
         type: Date,
-        default: null,
-    }
+        default: Date.now,
+    },
 });
 
-userSchema.pre('save', async function(next) {
-    try {
-        const profile = new Profile({
-            first_name: this['first_name'],
-            last_name: this['last_name']
+const convertTimeZone = (utcDate) => {
+    return moment(utcDate).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD HH:mm:ss');
+}
+
+// Convert time to Asian timezone before query
+userSchema.post(['find', 'findOne', 'findOneAndUpdate', 'findOneAndDelete'], function(result) {
+    if(Array.isArray(result)){
+        result.forEach(user => {
+            user.createdAt = convertTimeZone(user.createdAt);
         });
-        await profile.save();
-        this.profile = profile._id;
-        next();
-    } catch(error) {
-        throw new Error(`Error initializing profile user => ${error.message}`);
+    } else if (result) {
+        result.createdAt = convertTimeZone(result.createdAt);
     }
 });
 

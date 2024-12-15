@@ -2,6 +2,17 @@ const mongoose = require('mongoose');
 const moment = require('moment-timezone');
 
 const profileSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        unique: true
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+    },
     first_name: {
         type: String,
         required: true,
@@ -10,48 +21,43 @@ const profileSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    // Date of birth
+    dob: {
+        type: Date,
+        default: new Date('01-01-1990'),
+    },
+    profile_image: {
+        type: String,
+        default: '',
+    },
     phone_number: {
         type: String,
         default: '',
     },
-    dob: {
-        type: String,
-        default: () => {
-            return moment(new Date('1990-01-01')).format('DD/MM/YYYY')
-        },
-    },
     gender: {
         type: String,
-        enum: ['Male', 'Female', 'Other', "Unknown"],
-        default: 'Unknown',
+        default: 'Prefer not to say',
+        enum: ['Male', 'Female', 'Other', 'Prefer not to say']
     },
-    profile_picture: {
-        type: String,
-        default: `${process.env.MEDIA_SERVICE_API}/public/users/default_avatar.jpg`,
+    lastLogin: {
+        type: Date,
+        default: Date.now,
     },
-    signup_date: {
-        type: String,
-        default: () => {
-            return getCurrentVietnamTime();
-        },
-    },
-    last_login: {
-        type: String,
-        default: () => {
-            return getCurrentVietnamTime();
-        },
-    },
+    updatedAt: {
+        type: Date,
+        default: Date.now,
+    }
 });
 
-const getCurrentVietnamTime = () => {
-    return moment.tz('Asia/Ho_Chi_Minh').format('DD/MM/YYYY HH:mm:ss');
+const convertTimeZone = (utcDate) => {
+    return moment(utcDate).tz('Asia/Ho_Chi_Minh').format('YYYY-MM-DD HH:mm:ss');
 }
 
-profileSchema.pre('findOneAndUpdate', async function(next) {
-    this.last_login = getCurrentVietnamTime();
-    if('dob' in this.getUpdate())
-        this.dob = moment(this['dob']).format('DD/MM/YYYY');
-    next();
+// Convert time to Asian timezone before query
+profileSchema.post(['findOne', 'findOneAndUpdate'], function(result) {
+    if(result) {
+        result.createdAt = convertTimeZone(result.createdAt);
+    }
 });
 
-module.exports = mongoose.model("Profile", profileSchema);
+module.exports = mongoose.model('Profile', profileSchema);
