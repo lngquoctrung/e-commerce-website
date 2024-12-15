@@ -7,7 +7,8 @@
 ```mermaid
 graph LR
     subgraph client 
-        A["Front-end\n(localhost:3000)"]
+        A["Front-end
+        (localhost:3000)"]
     end
     
     subgraph server 
