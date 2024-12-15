@@ -11,9 +11,13 @@ graph LR
     end
     
     subgraph server 
-        B["API Gateway\n(localhost:8080)"]-->C["User service\n(localhost:5000)"]-->D[("User DB")]
-        B-->E["Auth service\n(localhost:5001)"]
-        B-->F["Mail service \n(localhost:5002)"]
+        B["API Gateway
+        (localhost:8080)"]-->C["User service
+        (localhost:5000)"]-->D[("User DB")]
+        B-->E["Auth service
+        (localhost:5001)"]
+        B-->F["Mail service
+        (localhost:5002)"]
     end
     A --> B
 ```
